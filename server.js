@@ -30,8 +30,10 @@ wss.on("connection", ws => {
     // sending message
     ws.on("message", data => {
         console.log(`Client has sent us: ${data}`);
-        ws.send("Message received");
-        //TODO - Handle message data here       
+        ws.send("Message received from front");
+        //TODO - Handle message data here
+        var command = JSON.parse(data);
+        console.log(command.type);       
     });
     // handling what to do when clients disconnects from server
     ws.on("close", () => {
@@ -77,7 +79,7 @@ delta_twist_cmds.subscribe(function(message) {
 var twist = new ROSLIB.Message({
 header:{
   stamp: {
-    sec: 00,
+    sec: now,
     nanosec: 00 },
   frame_id: "panda_hand"
 },
@@ -97,4 +99,5 @@ angular : {
 
 joint_states.subscribe();
 delta_twist_cmds.subscribe();
+var now = Date.now();
 delta_twist_cmds.publish(twist);
