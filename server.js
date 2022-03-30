@@ -1,6 +1,5 @@
 // Importing the required modules
 require('dotenv').config()
-console.log(process.env) // remove this after you've confirmed it working
 var ROSLIB = require('roslib');
 const WebSocketServer = require('ws');
 var url = process.env.URL;
@@ -27,6 +26,7 @@ console.log('Connection to websocket server closed.');
 const wss = new WebSocketServer.Server({ port: 8080 })
 wss.on("connection", ws => {
     console.log("New client connected");
+    ws.send("Server: Hi!");
     // sending message
     ws.on("message", data => {
         console.log(`Client has sent us: ${data}`);
