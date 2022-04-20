@@ -2,31 +2,40 @@
 require('dotenv').config()
 var ROSLIB = require('roslib');
 const WebSocketServer = require('ws');
-var url = process.env.URL;
-
 const axisChange = require('./messageparser').axisChange
+var url = process.env.URL;
+var exec = require('child_process').exec
 
-//WS CLIENT STUFF
+// gripper homing
+exec('./gripper.bash -h', function (error, stdOut, stdErr) {
+  console.log(stdErr)
+  console.log(stdOut)
+});
+
+
+
+//ROSLIB WS CLIENT STUFF
 var ros = new ROSLIB.Ros({
-    // petteri ip ja portti 9090
     url : url
 });
 
+var controllerState = {}
+
 
 ros.on('connection', function() {
-console.log('Connected to websocket server');
+console.log('Connected to roslib websocket server');
 });
 
 ros.on('error', function(error) {
-console.log('Error connecting to websocket server: ', error);
+console.log('Error connecting to roslib websocket server: ', error);
 });
 
 ros.on('close', function() {
-console.log('Connection to websocket server closed.');
+console.log('Connection to roslib websocket server closed.');
 });
 
 
-//Server stuff
+//WS server stuff
 const wss = new WebSocketServer.Server({ port: 8080 })
 wss.on("connection", ws => {
     console.log("New client connected");
@@ -38,11 +47,28 @@ wss.on("connection", ws => {
         //TODO - Handle message data here
         var command = JSON.parse(data);
 
-        if(command.type === 'axisChange'){
+        if(command.type === 'controller'){
           var twist = axisChange(command)
           delta_twist_cmds.publish(twist);
+          controllerState = command
         }
 
+        if(command.type === 'gripper'){
+          
+          if(command.gripper === 0){
+            exec('./gripper.bash -g 1.00 0.03 100', function (error, stdOut, stdErr) {
+              console.log(stdErr)
+              console.log(stdOut)
+            })
+          }
+          if(command.gripper === 1){
+            exec('./gripper.bash -g 0.00 0.03 100', function (error, stdOut, stdErr) {
+              console.log(stdErr)
+              console.log(stdOut)
+            })
+          }
+        }
+        
     });
     // handling what to do when clients disconnects from server
     ws.on("close", () => {
@@ -74,22 +100,6 @@ var joint_states = new ROSLIB.Topic({
   messageType : 'sensor_msgs/msg/JointState'
 })
 
-/* var grasp_server = new ROSLIB.ActionClient({
-  ros : ros,
-  serverName: '/panda_gripper/homing/_action',
-  actionName: '/panda_gripper/homing',
-})
-
-var grasp = new ROSLIB.Goal({
-  actionClient: grasp_server,
-  goalMessage: {}
-})
-grasp.on('feedback', function(feedback) {
-  console.log('Feedback: ' + feedback.sequence);
-});
-grasp.send()
-  // Then we add a callback to be called every time a message is published on this topic. */
-
 joint_states.subscribe(function(message) {
   console.log(`Received message on ${joint_states.name}: ${JSON.stringify(message)}`);
   //TODO - convert message back to JSON and process
@@ -98,30 +108,12 @@ delta_twist_cmds.subscribe(function(message) {
   console.log(`Received message on ${delta_twist_cmds.name}: ${JSON.stringify(message)}`);
   //TODO - convert message back to JSON and process
 }); 
-/* var now = Date.now();
-console.log(now)
-var twist = new ROSLIB.Message({
-header:{
-  stamp: {
-    sec: 1648813102 + 1000 ,
-    nanosec: 00 },
-  frame_id: "panda_hand"
-},
-twist: {
-  linear : {
-  x : 0.0,
-  y : -0.0,
-  z : 0.0
-},
-angular : {
-  x : -0.0,
-  y : 0.0,
-  z : -0.0
-}
-}
-}); */
 
 joint_states.subscribe();
 delta_twist_cmds.subscribe();
 
-//delta_twist_cmds.publish(twist);
+
+//while (true) {
+//  var twist = axisChange(controllerState)
+//  delta_twist_cmds.publish(twist);
+//}

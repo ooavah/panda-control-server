@@ -3,44 +3,33 @@ var ROSLIB = require('roslib');
 const axisChange = (command) => {
     console.log(command)
 
-    if (command.type !== 'axisChange') {
+    if (command.type !== 'controller') {
         return
     }
-
+    var now = Date.now()
     var twist = new ROSLIB.Message({
         header:{
           stamp: {
-              // TÄÄ PITÄÄ VAIHTAA SIT NYKYISYYTEEN TAI JOTAIN :D
-            sec: 1648818936 + 4000,
-            nanosec: 00 },
+            sec: Math.ceil(now / 1000) + 1,
+            nanosec: 010000000 },
           frame_id: "panda_hand"
         },
         twist: {
           linear : {
-          x : command.id === 'X' ? command.value : 0.0,
-          y : command.id === 'Y' ? command.value : 0.0,
-          z : command.id === 'Z' ? command.value : 0.0
+          x : command.linearX,
+          y : command.linearY,
+          z : command.linearZ
         },
         angular : {
-          x : -0.0,
-          y : 0.0,
-          z : -0.0
+          x : command.angularX,
+          y : command.angularY,
+          z : command.angularZ
         }
         }
         });
     return twist
 }
 
-const Grasp = (command) => {
-
-
-    var grasp = new ROSLIB.Goal({
-        width: command.value, 
-        speed: 0.03, 
-        force: 50
-    })
-    return grasp
-}
 
 
 
