@@ -5,7 +5,15 @@ const axisChange = (command) => {
     if (command.type !== 'controller') {
         return
     }
+    var now = Date.now()
     var twist = ({
+      header:{
+          stamp: {
+            sec: Math.ceil(now / 1000) + 1,
+            nanosec: 010000000 },
+          frame_id: "panda_hand"
+        },
+        twist: {
           linear : {
           x : command.linearX,
           y : command.linearY,
@@ -16,7 +24,7 @@ const axisChange = (command) => {
           y : command.angularY,
           z : command.angularZ
         }
-        });
+        }});
     return twist
 }
 

@@ -13,8 +13,8 @@ const axisChange = require('./messageparser').axisChange
 rclnodejs.init().then(() => {
     const node = rclnodejs.createNode('Oskarin_node');
     delta_twist_cmds = node.createPublisher(
-      'geometry_msgs/msg/Twist',
-      '/turtle1/cmd_vel'
+      'geometry_msgs/msg/TwistStamped',
+      '/servo_server/delta_twist_cmds'
     );
     rclnodejs.spin(node);
     console.log("Publisher created.")
