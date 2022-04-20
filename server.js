@@ -1,38 +1,37 @@
 // Importing the required modules
+//'use strict';
 require('dotenv').config()
-var ROSLIB = require('roslib');
+
+const rclnodejs = require('rclnodejs');
 const WebSocketServer = require('ws');
+
+let delta_twist_cmds;
+
 const axisChange = require('./messageparser').axisChange
-var url = process.env.URL;
-var exec = require('child_process').exec
-
-// gripper homing
-exec('./gripper.bash -h', function (error, stdOut, stdErr) {
-  console.log(stdErr)
-  console.log(stdOut)
-});
 
 
+rclnodejs.init().then(() => {
+    const node = rclnodejs.createNode('Oskarin_node');
+    delta_twist_cmds = node.createPublisher(
+      'geometry_msgs/msg/Twist',
+      '/turtle1/cmd_vel'
+    );
+    rclnodejs.spin(node);
+    console.log("Publisher created.")
+    /*
+    let count = 0;
+     setInterval(function () {
+      delta_twist_cmds.publish({linear: {x: 2.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 1.8}});
+      console.log(`Publish ${++count} messages.`);
+    }, 1000); */
 
-//ROSLIB WS CLIENT STUFF
-var ros = new ROSLIB.Ros({
-    url : url
-});
+    
+  })
+  .catch((e) => {
+    console.log(e);
+  });
 
-var controllerState = {}
 
-
-ros.on('connection', function() {
-console.log('Connected to roslib websocket server');
-});
-
-ros.on('error', function(error) {
-console.log('Error connecting to roslib websocket server: ', error);
-});
-
-ros.on('close', function() {
-console.log('Connection to roslib websocket server closed.');
-});
 
 
 //WS server stuff
@@ -49,6 +48,7 @@ wss.on("connection", ws => {
 
         if(command.type === 'controller'){
           var twist = axisChange(command)
+          console.log(twist);
           delta_twist_cmds.publish(twist);
           controllerState = command
         }
@@ -56,16 +56,8 @@ wss.on("connection", ws => {
         if(command.type === 'gripper'){
           
           if(command.gripper === 0){
-            exec('./gripper.bash -g 1.00 0.03 100', function (error, stdOut, stdErr) {
-              console.log(stdErr)
-              console.log(stdOut)
-            })
           }
           if(command.gripper === 1){
-            exec('./gripper.bash -g 0.00 0.03 100', function (error, stdOut, stdErr) {
-              console.log(stdErr)
-              console.log(stdOut)
-            })
           }
         }
         
@@ -84,36 +76,3 @@ wss.on("connection", ws => {
 
 
 
-//ROS TOPIC STUFF
-
-var delta_twist_cmds = new ROSLIB.Topic({
-  ros : ros,
-  name : '/servo_server/delta_twist_cmds',
-  frame_id : 'panda_hand',
-  messageType : 'geometry_msgs/msg/TwistStamped'
-});
-
-var joint_states = new ROSLIB.Topic({
-  ros : ros,
-  name: '/joint_states',
-  throttle_rate : 60000, //Throttling rate high for debug
-  messageType : 'sensor_msgs/msg/JointState'
-})
-
-joint_states.subscribe(function(message) {
-  console.log(`Received message on ${joint_states.name}: ${JSON.stringify(message)}`);
-  //TODO - convert message back to JSON and process
-}); 
-delta_twist_cmds.subscribe(function(message) {
-  console.log(`Received message on ${delta_twist_cmds.name}: ${JSON.stringify(message)}`);
-  //TODO - convert message back to JSON and process
-}); 
-
-joint_states.subscribe();
-delta_twist_cmds.subscribe();
-
-
-//while (true) {
-//  var twist = axisChange(controllerState)
-//  delta_twist_cmds.publish(twist);
-//}
