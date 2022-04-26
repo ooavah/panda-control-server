@@ -6,6 +6,7 @@ const rclnodejs = require('rclnodejs');
 const WebSocketServer = require('ws');
 
 let delta_twist_cmds;
+let delta_joint_cmds;
 
 const axisChange = require('./messageparser').axisChange
 
@@ -16,22 +17,20 @@ rclnodejs.init().then(() => {
       'geometry_msgs/msg/TwistStamped',
       '/servo_server/delta_twist_cmds'
     );
+    delta_joint_cmds = node.createPublisher(
+      'control_msgs/msg/JointJog',
+      '/servo_server/delta_joint_cmds'
+    );
+    node.createSubscription('control_msgs/msg/JointJog', '/servo_server/delta_joint_cmds', (msg) => {
+    console.log(`Received message: ${typeof msg}`, msg);
+    });
     rclnodejs.spin(node);
     console.log("Publisher created.")
-    /*
-    let count = 0;
-     setInterval(function () {
-      delta_twist_cmds.publish({linear: {x: 2.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 1.8}});
-      console.log(`Publish ${++count} messages.`);
-    }, 1000); */
-
     
   })
   .catch((e) => {
     console.log(e);
   });
-
-
 
 
 //WS server stuff
@@ -41,15 +40,21 @@ wss.on("connection", ws => {
     ws.send("Server: Hi!");
     // sending message
     ws.on("message", data => {
-        console.log(`Client has sent us: ${data}`);
+        //console.log(`Client has sent us: ${data}`);
         ws.send("Message received from front");
         //TODO - Handle message data here
         var command = JSON.parse(data);
 
         if(command.type === 'controller'){
           var twist = axisChange(command)
-          console.log(twist);
+          //console.log(twist);
           delta_twist_cmds.publish(twist);
+          controllerState = command
+        }
+        if(command.type === 'joint'){
+          var jointCommand = axisChange(command)
+          console.log(jointCommand);
+          delta_joint_cmds.publish(jointCommand);
           controllerState = command
         }
 
