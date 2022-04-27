@@ -1,6 +1,6 @@
 
 const axisChange = (command) => {
-    console.log(command)
+    //console.log(command)
 
     if (command.type === 'controller') {
     var now = Date.now()
@@ -13,9 +13,9 @@ const axisChange = (command) => {
         },
         twist: {
           linear : {
-          x : command.linearX,
-          y : command.linearY,
-          z : command.linearZ - 0.5
+          x : command.linearX *0.6,
+          y : command.linearY *0.6,
+          z : command.linearZ *0.6
         },
         angular : {
           x : command.angularX,
@@ -34,8 +34,8 @@ const axisChange = (command) => {
             nanosec: 010000000 },
           frame_id: "panda_link0"
           },
-          joint_names: Array.of('panda_joint1'),
-          velocities: Float64Array.of(command.joint0),
+          joint_names: [command.name],
+          velocities: [command.value],
           duration: 0
         });
     return joint

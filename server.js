@@ -1,5 +1,7 @@
 // Importing the required modules
 //'use strict';
+
+const Gripper = require('./gripper.js')
 require('dotenv').config()
 
 const rclnodejs = require('rclnodejs');
@@ -7,13 +9,16 @@ const WebSocketServer = require('ws');
 
 let delta_twist_cmds;
 let delta_joint_cmds;
-let gripper_cmds;
+let homingClient;
+let graspClient;
 
 const axisChange = require('./messageparser').axisChange
 
 
 rclnodejs.init().then(() => {
     const node = rclnodejs.createNode('Petteri_node');
+    const node_gripper = rclnodejs.createNode('Petteri_gripper_node');
+
     //Global twist publisher
     delta_twist_cmds = node.createPublisher(
       'geometry_msgs/msg/TwistStamped',
@@ -25,12 +30,13 @@ rclnodejs.init().then(() => {
       '/servo_server/delta_joint_cmds'
     );
     //Gripper action client
-    gripper_cmds = new rclnodejs.ActionClient(node,'/turltesim/action/RotateAbsolute','/turtle1/rotate_asolute');
-    //gripper_cmds.sendGoal('{theta: 1.57}')
+    homingClient = new Gripper(node_gripper, 'homing')
+    
+    graspClient = new Gripper(node_gripper, 'grasp')
 
     //Subscription for Joint twists for debug
-    node.createSubscription('control_msgs/msg/JointJog', '/servo_server/delta_joint_cmds', (msg) => {
-    console.log(`Received message: ${typeof msg}`, msg);
+    node.createSubscription('sensor_msgs/msg/Image', '/image_raw', (msg) => {
+    //console.log(`Received message: ${typeof msg}`, msg);
     });
     rclnodejs.spin(node);
     console.log("Publishers and subscriptions created.")
@@ -69,8 +75,10 @@ wss.on("connection", ws => {
         if(command.type === 'gripper'){
           
           if(command.gripper === 0){
+            graspClient.grasp(0)
           }
           if(command.gripper === 1){
+            graspClient.grasp(1)
           }
         }
         
