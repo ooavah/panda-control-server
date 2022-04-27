@@ -3,6 +3,7 @@ require('dotenv').config()
 var ROSLIB = require('roslib');
 const WebSocketServer = require('ws');
 const axisChange = require('./messageparser').axisChange
+const jointChange = require('./messageparser').jointChange
 var url = process.env.URL;
 var exec = require('child_process').exec
 
@@ -52,6 +53,11 @@ wss.on("connection", ws => {
           delta_twist_cmds.publish(twist);
           controllerState = command
         }
+        if(command.type === 'joint'){
+          var joint = jointChange(command)
+          delta_joint_cmds.publish(joint);
+          controllerState = command
+        }
 
         if(command.type === 'gripper'){
           
@@ -93,11 +99,24 @@ var delta_twist_cmds = new ROSLIB.Topic({
   messageType : 'geometry_msgs/msg/TwistStamped'
 });
 
+var delta_joint_cmds = new ROSLIB.Topic({
+  ros : ros,
+  name : '/servo_server/delta_joint_cmds',
+  frame_id : 'panda_hand',
+  messageType : 'control_msgs/msg/JointJog'
+});
+
+
 var joint_states = new ROSLIB.Topic({
   ros : ros,
   name: '/joint_states',
   throttle_rate : 60000, //Throttling rate high for debug
   messageType : 'sensor_msgs/msg/JointState'
+})
+
+var usb_cam = new ROSLIB.Topic({
+  ros: ros,
+  name: ''
 })
 
 joint_states.subscribe(function(message) {

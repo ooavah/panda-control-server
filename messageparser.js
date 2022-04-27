@@ -16,21 +16,38 @@ const axisChange = (command) => {
         },
         twist: {
           linear : {
-          x : command.linearX,
-          y : command.linearY,
-          z : command.linearZ
+          x : command.linearX *0.5,
+          y : command.linearY *0.5,
+          z : command.linearZ *0.5
         },
         angular : {
-          x : command.angularX,
-          y : command.angularY,
-          z : command.angularZ
+          x : command.angularX *0.9,
+          y : command.angularY *0.9,
+          z : command.angularZ *0.9
         }
         }
         });
     return twist
 }
 
+const jointChange = (command) => {
+  var now = Date.now()
+  var joint = new ROSLIB.Message({
+    header: {
+      stamp: {
+        sec: Math.ceil(now / 1000) + 1,
+        nanosec: 010000000} ,
+      frame_id: 'panda_link0'
+    },
+    joint_names: ['panda_joint1'],
+    displacements: [],
+    velocities: [command.joint0],
+      duration: 0.0
+  })
+  return joint
+}
 
 
 
-module.exports = { axisChange}
+
+module.exports = {axisChange, jointChange}
