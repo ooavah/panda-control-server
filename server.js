@@ -7,25 +7,33 @@ const WebSocketServer = require('ws');
 
 let delta_twist_cmds;
 let delta_joint_cmds;
+let gripper_cmds;
 
 const axisChange = require('./messageparser').axisChange
 
 
 rclnodejs.init().then(() => {
-    const node = rclnodejs.createNode('Oskarin_node');
+    const node = rclnodejs.createNode('Petteri_node');
+    //Global twist publisher
     delta_twist_cmds = node.createPublisher(
       'geometry_msgs/msg/TwistStamped',
       '/servo_server/delta_twist_cmds'
     );
+    //Joint twist publisher
     delta_joint_cmds = node.createPublisher(
       'control_msgs/msg/JointJog',
       '/servo_server/delta_joint_cmds'
     );
+    //Gripper action client
+    gripper_cmds = new rclnodejs.ActionClient(node,'/turltesim/action/RotateAbsolute','/turtle1/rotate_asolute');
+    //gripper_cmds.sendGoal('{theta: 1.57}')
+
+    //Subscription for Joint twists for debug
     node.createSubscription('control_msgs/msg/JointJog', '/servo_server/delta_joint_cmds', (msg) => {
     console.log(`Received message: ${typeof msg}`, msg);
     });
     rclnodejs.spin(node);
-    console.log("Publisher created.")
+    console.log("Publishers and subscriptions created.")
     
   })
   .catch((e) => {
@@ -40,7 +48,7 @@ wss.on("connection", ws => {
     ws.send("Server: Hi!");
     // sending message
     ws.on("message", data => {
-        //console.log(`Client has sent us: ${data}`);
+        console.log(`Client has sent us: ${data}`);
         ws.send("Message received from front");
         //TODO - Handle message data here
         var command = JSON.parse(data);
