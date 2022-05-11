@@ -11,6 +11,7 @@ let delta_twist_cmds;
 let delta_joint_cmds;
 let homingClient;
 let graspClient;
+let cameraData;
 
 const axisChange = require('./messageparser').axisChange
 
@@ -37,6 +38,8 @@ rclnodejs.init().then(() => {
     //Subscription for Joint twists for debug
     node.createSubscription('sensor_msgs/msg/Image', '/image_raw', (msg) => {
     //console.log(`Received message: ${typeof msg}`, msg);
+    cameraData = msg;
+    //console.log(cameraData);
     });
     rclnodejs.spin(node);
     console.log("Publishers and subscriptions created.")
@@ -51,7 +54,10 @@ rclnodejs.init().then(() => {
 const wss = new WebSocketServer.Server({ port: 8080 })
 wss.on("connection", ws => {
     console.log("New client connected");
-    ws.send("Server: Hi!");
+    ws.send(JSON.stringify("Server: Hi!"));
+    ws.send(JSON.stringify(cameraData));
+    console.log("Sent camera data");
+    console.log(cameraData);
     // sending message
     ws.on("message", data => {
         console.log(`Client has sent us: ${data}`);
