@@ -1,4 +1,3 @@
-
 // Copyright (c) 2018 Intel Corporation. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +40,6 @@ class Gripper {
       );
       console.log('Action client created')
     }
-    
   }
 
   async homing() {
@@ -51,7 +49,6 @@ class Gripper {
 
   async grasp(width){
     const goal = new Grasp.Goal();
-
     goal.width = width
     goal.speed = 0.03
     goal.force = 50
@@ -64,23 +61,16 @@ class Gripper {
   async sendGoal(goal) {
     this._node.getLogger().info('Waiting for action server...');
     await this._actionClient.waitForServer();
-    
-
     this._node.getLogger().info('Sending goal request...');
-
     const goalHandle = await this._actionClient.sendGoal(goal, (feedback) =>
       this.feedbackCallback(feedback)
     );
-
     if (!goalHandle.isAccepted()) {
       this._node.getLogger().info('Goal rejected');
       return;
     }
-
     this._node.getLogger().info('Goal accepted');
-
     const result = await goalHandle.getResult();
-
     if (goalHandle.isSucceeded()) {
       this._node
         .getLogger()
@@ -88,10 +78,8 @@ class Gripper {
     } else {
       this._node.getLogger().info(`Goal failed with status: ${status}`);
     }
-
     rclnodejs.shutdown();
   }
-
   feedbackCallback(feedback) {
     this._node.getLogger().info(`Received feedback: ${feedback.sequence}`);
   }

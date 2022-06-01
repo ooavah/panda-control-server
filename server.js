@@ -3,17 +3,55 @@
 
 const Gripper = require('./gripper.js')
 require('dotenv').config()
+// Video_asiat
+const cv = require('opencv4nodejs-prebuilt'); 
+const path = require('path'); 
+const express = require('express');
+const app = express();
+const server = require('http').Server(app);
+const io = require('socket.io')(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 const rclnodejs = require('rclnodejs');
 const WebSocketServer = require('ws');
+
+
 
 let delta_twist_cmds;
 let delta_joint_cmds;
 let homingClient;
 let graspClient;
-let cameraData;
 
 const axisChange = require('./messageparser').axisChange
+
+//Video_asioita
+const FPS=20;
+cv.get
+const wCap = new cv.VideoCapture(0);
+wCap.set(cv.CAP_PROP_FRAME_WIDTH, 800);
+wCap.set(cv.CAP_PROP_FRAME_HEIGHT, 640);
+
+var frame = wCap.read();
+setInterval(() => {
+  frame = wCap.read(); 
+}, 30);
+
+
+setInterval(() => {
+  const image  = cv.imencode('.jpg', frame).toString('base64');
+  io.emit('image', image);
+}, 1000/FPS);
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+//Video_server
+server.listen(8081)
 
 
 rclnodejs.init().then(() => {
@@ -36,11 +74,10 @@ rclnodejs.init().then(() => {
     graspClient = new Gripper(node_gripper, 'grasp')
 
     //Subscription for Joint twists for debug
-    node.createSubscription('sensor_msgs/msg/Image', '/image_raw', (msg) => {
+    //node.createSubscription('sensor_msgs/msg/Image', '/image_raw', (msg) => {
     //console.log(`Received message: ${typeof msg}`, msg);
-    cameraData = msg;
     //console.log(cameraData);
-    });
+    //});
     rclnodejs.spin(node);
     console.log("Publishers and subscriptions created.")
     
@@ -50,14 +87,12 @@ rclnodejs.init().then(() => {
   });
 
 
+
 //WS server stuff
 const wss = new WebSocketServer.Server({ port: 8080 })
 wss.on("connection", ws => {
     console.log("New client connected");
     ws.send(JSON.stringify("Server: Hi!"));
-    ws.send(JSON.stringify(cameraData));
-    console.log("Sent camera data");
-    console.log(cameraData);
     // sending message
     ws.on("message", data => {
         console.log(`Client has sent us: ${data}`);
@@ -82,9 +117,11 @@ wss.on("connection", ws => {
           
           if(command.gripper === 0){
             graspClient.grasp(0)
+            console.log("Gripper close");
           }
           if(command.gripper === 1){
             graspClient.grasp(1)
+            console.log("Gripper open");
           }
         }
         
@@ -100,6 +137,3 @@ wss.on("connection", ws => {
         //TODO - Send stop message to topics
     }
 });
-
-
-
