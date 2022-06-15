@@ -1,6 +1,5 @@
 
 const axisChange = (command) => {
-    //console.log(command)
 
     if (command.type === 'controller') {
     var now = Date.now()

@@ -1,5 +1,4 @@
 // Importing the required modules
-//'use strict';
 const rclnodejs = require('rclnodejs');
 const WebSocketServer = require('ws');
 const axisChange = require('./messageparser').axisChange
@@ -34,29 +33,32 @@ let graspClient;
 //Configure video feed parameters and video device
 const FPS=20;
 cv.get
-const wCap = new cv.VideoCapture(0);
+let wCap = null
+try{
+wCap = new cv.VideoCapture(0);
 wCap.set(cv.CAP_PROP_FRAME_WIDTH, 800);
 wCap.set(cv.CAP_PROP_FRAME_HEIGHT, 640);
+}
+catch(e){
+  wCap = null
+}
+if(wCap != null){
+  //Create video feed frame
+  var frame = wCap.read();
+  setInterval(() => {
+    frame = wCap.read(); 
+  }, 30);
 
-//Create video feed frame
-var frame = wCap.read();
-setInterval(() => {
-  frame = wCap.read(); 
-}, 30);
+  //Set interval to grab frame from local feed
+  setInterval(() => {
+    const image  = cv.imencode('.jpg', frame).toString('base64');
+    io.emit('image', image);
+  }, 1000/FPS);
 
-//Set interval to grab frame from local feed
-setInterval(() => {
-  const image  = cv.imencode('.jpg', frame).toString('base64');
-  io.emit('image', image);
-}, 1000/FPS);
 
-//Do we need this?
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-//Video_server
-server.listen(8081)
+  //Video_server
+  server.listen(8081)
+}
 
 //Initialise nodes for joint and gripper actions
 rclnodejs.init().then(() => {
