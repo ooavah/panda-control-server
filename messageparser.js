@@ -1,14 +1,10 @@
-var ROSLIB = require('roslib');
 
 const axisChange = (command) => {
-    console.log(command)
 
-    if (command.type !== 'controller') {
-        return
-    }
+    if (command.type === 'controller') {
     var now = Date.now()
-    var twist = new ROSLIB.Message({
-        header:{
+    var twist = ({
+      header:{
           stamp: {
             sec: Math.ceil(now / 1000) + 1,
             nanosec: 010000000 },
@@ -16,37 +12,35 @@ const axisChange = (command) => {
         },
         twist: {
           linear : {
-          x : command.linearX *0.5,
-          y : command.linearY *0.5,
-          z : command.linearZ *0.5
+          x : command.linearX *0.6,
+          y : command.linearY *0.6,
+          z : command.linearZ *0.6
+
         },
         angular : {
           x : command.angularX *0.9,
           y : command.angularY *0.9,
           z : command.angularZ *0.9
         }
-        }
-        });
+        }});
     return twist
 }
+    else if (command.type === 'joint') {
+    var now = Date.now()
+    var joint = ({
+      header:{
+          stamp: {
+            sec: Math.ceil(now / 1000) + 1,
+            nanosec: 010000000 },
+          frame_id: "panda_link0"
+          },
+          joint_names: [command.name],
+          velocities: [command.value],
+          duration: 0
+        });
+    return joint
 
-const jointChange = (command) => {
-  var now = Date.now()
-  var joint = new ROSLIB.Message({
-    header: {
-      stamp: {
-        sec: Math.ceil(now / 1000) + 1,
-        nanosec: 010000000} ,
-      frame_id: 'panda_link0'
-    },
-    joint_names: ['panda_joint1'],
-    displacements: [],
-    velocities: [command.joint0],
-      duration: 0.0
-  })
-  return joint
-}
-
+        }}
 
 
 

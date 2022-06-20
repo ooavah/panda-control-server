@@ -1,51 +1,106 @@
 // Importing the required modules
-require('dotenv').config()
-var ROSLIB = require('roslib');
+const rclnodejs = require('rclnodejs');
 const WebSocketServer = require('ws');
 const axisChange = require('./messageparser').axisChange
-const jointChange = require('./messageparser').jointChange
-var url = process.env.URL;
-var exec = require('child_process').exec
+const Gripper = require('./gripper.js')
+require('dotenv').config()
 
-// gripper homing
-exec('./gripper.bash -h', function (error, stdOut, stdErr) {
-  console.log(stdErr)
-  console.log(stdOut)
+
+// Configuring express for video feed
+const cv = require('opencv4nodejs-prebuilt'); 
+const path = require('path'); 
+const express = require('express');
+const app = express();
+const server = require('http').Server(app);
+//Set CORS to allow cross site scripting
+const io = require('socket.io')(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
 });
 
 
 
-//ROSLIB WS CLIENT STUFF
-var ros = new ROSLIB.Ros({
-    url : url
-});
 
-var controllerState = {}
+//Declare global varibles
+let delta_twist_cmds;
+let delta_joint_cmds;
+let homingClient;
+let graspClient;
 
 
-ros.on('connection', function() {
-console.log('Connected to roslib websocket server');
-});
 
-ros.on('error', function(error) {
-console.log('Error connecting to roslib websocket server: ', error);
-});
+//Configure video feed parameters and video device
+const FPS=20;
+cv.get
+let wCap = null
+try{
+wCap = new cv.VideoCapture(0);
+wCap.set(cv.CAP_PROP_FRAME_WIDTH, 800);
+wCap.set(cv.CAP_PROP_FRAME_HEIGHT, 640);
+}
+catch(e){
+  wCap = null
+}
+if(wCap != null){
+  //Create video feed frame
+  var frame = wCap.read();
+  setInterval(() => {
+    frame = wCap.read(); 
+  }, 30);
 
-ros.on('close', function() {
-console.log('Connection to roslib websocket server closed.');
-});
+  //Set interval to grab frame from local feed
+  setInterval(() => {
+    const image  = cv.imencode('.jpg', frame).toString('base64');
+    io.emit('image', image);
+  }, 1000/FPS);
+
+
+  //Video_server
+  server.listen(8081)
+}
+
+//Initialise nodes for joint and gripper actions
+rclnodejs.init().then(() => {
+    const node = rclnodejs.createNode('Petteri_joint_node');
+    const node_gripper = rclnodejs.createNode('Petteri_gripper_node');
+
+    //Global twist publisher
+    delta_twist_cmds = node.createPublisher(
+      'geometry_msgs/msg/TwistStamped',
+      '/servo_server/delta_twist_cmds'
+    );
+    //Global joint twist publisher
+    delta_joint_cmds = node.createPublisher(
+      'control_msgs/msg/JointJog',
+      '/servo_server/delta_joint_cmds'
+    );
+    //Gripper action clients
+    homingClient = new Gripper(node_gripper, 'homing')
+    
+    graspClient = new Gripper(node_gripper, 'grasp')
+
+   
+    rclnodejs.spin(node);
+    console.log("Publishers and subscriptions created.")
+    
+  })
+  .catch((e) => {
+    console.log(e);
+  });
+
 
 
 //WS server stuff
 const wss = new WebSocketServer.Server({ port: 8080 })
 wss.on("connection", ws => {
     console.log("New client connected");
-    ws.send("Server: Hi!");
+    ws.send(JSON.stringify("Server: Hi!"));
     // sending message
     ws.on("message", data => {
         console.log(`Client has sent us: ${data}`);
         ws.send("Message received from front");
-        //TODO - Handle message data here
         var command = JSON.parse(data);
 
         if(command.type === 'controller'){
@@ -54,24 +109,22 @@ wss.on("connection", ws => {
           controllerState = command
         }
         if(command.type === 'joint'){
-          var joint = jointChange(command)
-          delta_joint_cmds.publish(joint);
+          var jointCommand = axisChange(command)
+          console.log(jointCommand);
+          delta_joint_cmds.publish(jointCommand);
+
           controllerState = command
         }
 
         if(command.type === 'gripper'){
           
           if(command.gripper === 0){
-            exec('./gripper.bash -g 1.00 0.03 100', function (error, stdOut, stdErr) {
-              console.log(stdErr)
-              console.log(stdOut)
-            })
+            graspClient.grasp(0)
+            console.log("Gripper close");
           }
           if(command.gripper === 1){
-            exec('./gripper.bash -g 0.00 0.03 100', function (error, stdOut, stdErr) {
-              console.log(stdErr)
-              console.log(stdOut)
-            })
+            graspClient.grasp(1)
+            console.log("Gripper open");
           }
         }
         
@@ -79,60 +132,10 @@ wss.on("connection", ws => {
     // handling what to do when clients disconnects from server
     ws.on("close", () => {
         console.log("The client has disconnected");
-        //TODO - Send stop message to topics
+        
     });
     // handling client connection error
     ws.onerror = function () {
         console.log("Some Error occurred")
-        //TODO - Send stop message to topics
     }
 });
-
-
-
-//ROS TOPIC STUFF
-
-var delta_twist_cmds = new ROSLIB.Topic({
-  ros : ros,
-  name : '/servo_server/delta_twist_cmds',
-  frame_id : 'panda_hand',
-  messageType : 'geometry_msgs/msg/TwistStamped'
-});
-
-var delta_joint_cmds = new ROSLIB.Topic({
-  ros : ros,
-  name : '/servo_server/delta_joint_cmds',
-  frame_id : 'panda_hand',
-  messageType : 'control_msgs/msg/JointJog'
-});
-
-
-var joint_states = new ROSLIB.Topic({
-  ros : ros,
-  name: '/joint_states',
-  throttle_rate : 60000, //Throttling rate high for debug
-  messageType : 'sensor_msgs/msg/JointState'
-})
-
-var usb_cam = new ROSLIB.Topic({
-  ros: ros,
-  name: ''
-})
-
-joint_states.subscribe(function(message) {
-  console.log(`Received message on ${joint_states.name}: ${JSON.stringify(message)}`);
-  //TODO - convert message back to JSON and process
-}); 
-delta_twist_cmds.subscribe(function(message) {
-  console.log(`Received message on ${delta_twist_cmds.name}: ${JSON.stringify(message)}`);
-  //TODO - convert message back to JSON and process
-}); 
-
-joint_states.subscribe();
-delta_twist_cmds.subscribe();
-
-
-//while (true) {
-//  var twist = axisChange(controllerState)
-//  delta_twist_cmds.publish(twist);
-//}
