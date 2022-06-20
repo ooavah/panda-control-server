@@ -15,11 +15,12 @@ const axisChange = (command) => {
           x : command.linearX *0.6,
           y : command.linearY *0.6,
           z : command.linearZ *0.6
+
         },
         angular : {
-          x : command.angularX,
-          y : command.angularY,
-          z : command.angularZ
+          x : command.angularX *0.9,
+          y : command.angularY *0.9,
+          z : command.angularZ *0.9
         }
         }});
     return twist
@@ -42,4 +43,5 @@ const axisChange = (command) => {
         }}
 
 
-module.exports = { axisChange}
+
+module.exports = {axisChange, jointChange}

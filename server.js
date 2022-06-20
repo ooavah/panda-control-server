@@ -5,6 +5,7 @@ const axisChange = require('./messageparser').axisChange
 const Gripper = require('./gripper.js')
 require('dotenv').config()
 
+
 // Configuring express for video feed
 const cv = require('opencv4nodejs-prebuilt'); 
 const path = require('path'); 
@@ -111,6 +112,7 @@ wss.on("connection", ws => {
           var jointCommand = axisChange(command)
           console.log(jointCommand);
           delta_joint_cmds.publish(jointCommand);
+
           controllerState = command
         }
 
